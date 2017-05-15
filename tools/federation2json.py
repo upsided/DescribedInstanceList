@@ -162,6 +162,32 @@ if __name__ == "__main__":
 
         d['lastCheck'] = time.time()
 
+        if d['reachable']:
+            # try to get the json description
+            # it's the "short description" so we put it in 'tagline'
+            url = "https://%s/api/v1/instance.json" % instance['name']
+            try:
+                r = requests.get(url, timeout=1.0)
+                if r.status_code == 200:
+                    theDict = json.loads(r.text)
+                    #eprint(theDict)
+                    if 'description' in theDict:
+                        if len(theDict['description']) > 0:
+                            d['tagline'] = theDict['description']
+                        del theDict['description']
+                    if 'email' in theDict:
+                        if len(theDict['email']) > 0:
+                            d['email'] = theDict['email']
+                        del theDict['email']
+                    
+                    for k,v in theDict.items():
+                        if len(v)>0:
+                            d[k] = v
+            
+            except Exception as e: # so many exception types, hard to do anything but this
+              eprint ("Skipping extra JSON info for " + url + "(%s)" % str(e))
+          
+                       
         aboutInstances.append(d)
 
     f = open(filenameOut, "w")

@@ -90,7 +90,7 @@ if __name__ == "__main__":
 
     Out.write(head)
     for i in instances:
-        eprint(i['name'])
+        eprint("Generating markdown for: %s" % i['name'])
         if i['reachable']:
             if 'openRegistrations' in i.keys() and i['openRegistrations']:
                 Out.write(NameHead(i))
