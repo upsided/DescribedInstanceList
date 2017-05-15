@@ -46,7 +46,7 @@ chmod +x markdown2html.sh
 python3 json2sqlite.py ../data/DescribedInstances.json ../data/DescribedInstances.sqlite
 ```
 
-This is pretty much what the `build.sh` script does.
+This is pretty much what the `buildall.sh` script does.
 
 ### Tinkering
 If you want to test a smaller set of random instance data, set the `TEST=1` environment variable, e.g.:
