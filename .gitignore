@@ -1,0 +1,12 @@
+# all generated files
+.json
+.html
+.sqlite
+
+# markdown is troublesome, but ignore the stuff in data
+data/*.md
+
+#keep the template file
+!tools/*.html
+data/*
+
