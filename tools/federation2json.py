@@ -50,13 +50,20 @@ def ExtractAboutInfo(html: str) -> dict:
     'admin'         -- admin contact in form @Gargron, if any
     'email'         -- email contact if any
     'stuff'         -- extra junk that might not have parsed in contact area
-
+    'language'      -- declared language in html doc (not reliable)
     """
 
     s = BeautifulSoup(html, "html.parser")
     d = {}
     found = False
     panels = []
+
+    theH = s.find('html')
+    if 'lang' in theH.attrs:
+        d['language'] = theH.attrs['lang']
+        eprint("LANGUAGE: " + d['language'])
+
+        
     for div in s.find_all('div'):
         if 'class' in div.attrs:
             for c in div['class']: #can have multiple classes
@@ -95,6 +102,8 @@ def ExtractAboutInfo(html: str) -> dict:
             d[u'tagline'] = s.p.get_text()
         except AttributeError:
             pass
+
+
 
     # convert to text
     if 'nameplate' in d.keys():

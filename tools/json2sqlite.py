@@ -7,6 +7,7 @@ theSchema = """create table instances(
 domain text primary key,
 name text,
 title text,
+language text,
 url text,
 uri text,
 version text,
@@ -50,28 +51,33 @@ def deFudge(i):
 def InsertCommand(aDict, theDB):
     command = "insert into instances ("
     keylist = []
-
-    for k in aDict:
+    keylistPruned = []
+    
+    for k in aDict.keys():
+        keylist.append(k)
+            
+    for k in keylist:
         # so try to fit the schema as stated above
         try:
-            theDB.execute ("select ? from instances", [k])
-            keylist.append(k)
+            temp = theDB.execute ("select %s from instances" % k)
+            keylistPruned.append(k)
         except sqlite3.OperationalError as e: # KLUDGGGGGGEEEE
             if str(e)[0:14] == 'no such column':
-                eprint(e)
                 del aDict[k]
+            else:
+                raise
         
-    for k in keylist:
+    for k in keylistPruned:
         command = command + " " + k + ","
 
     command = command[0:-1] # remove last comma
 
     command  = command + ")"
-    command = command + " VALUES (" + ', '.join('?' * len(keylist) )
+    command = command + " VALUES (" + ', '.join('?' * len(keylistPruned) )
     command  = command + ")"
 
     valueList = []
-    for k in keylist:
+    for k in keylistPruned:
         valueList.append(aDict[k])
     #eprint(command)
     theDB.execute(command, valueList)
