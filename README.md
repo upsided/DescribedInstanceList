@@ -1,5 +1,20 @@
-# Described Instance List README
-This folder contains python tools to download information on every instance in the Mastodon federation and generate documents with this information.
+# Described Instance List Tools
+This is a set of tools for generating information, including descriptions, on every [Mastodon](https://en.wikipedia.org/wiki/Mastodon_Social) instance, in various formats, like sqlite and html.
+
+#### tl;dr
+`chmod +x buildall.sh && buildall.sh`
+Look in the data/ directory for your generated files.
+
+### Dependencies
+Oh wow, library errors? This is maybe why. You need:
+
+* Python 3
+* a **markdown** command (I use [discount](http://www.pell.portland.or.us/~orc/Code/discount/))
+* `pip3 install bs4` BeautifulSoup, for parsing HTML
+* `pip3 install requests`, for downloading websites without silly syntactic junk
+
+
+### The Scripts
 
 | Script | Effect | output file |
 |--------|--------|--------|
@@ -10,15 +25,8 @@ This folder contains python tools to download information on every instance in t
 |buildall.sh | generates all of the above | data/* |
 
 ### Warning
-These tools are *ad hoc kludges* to get the job done only. I'm not interested in developing a syncronizing system that can update records, resume downloads, merge data, guess schema, etc. etc. This is a one-shot tool that you can run for 30 minutes to get all the info you wish.
+These tools are *ad hoc kludges* to get the job done only. I'm not interested in developing a syncronizing system that can update records, resume downloads, merge data, guess schema, etc. etc. This is a simple one-shot tool that you can run for 30 minutes to consume all the info out there.
 
-### Dependencies
-Python 3, and also:
-```
-pip3 install bs4      # BeautifulSoup, for parsing HTML
-pip3 install requests # for downloading websites without complex syntactic junk
-```
-You also need the `markdown` command in your $PATH if you wish to generate html. I use [discount](http://www.pell.portland.or.us/~orc/Code/discount/).
 
 ### Use
 
@@ -33,7 +41,8 @@ cd tools
 python3 federation2json.py ../data/DescribedInstances.json
 # wait about 30 minutes for stuff to download
 python3 json2markdown.py ../data/DescribedInstances.json ../data/DescribedInstances.md
-. markdown2html.sh ../data/DescribedInstances.md ../data/DescribedInstances.html
+chmod +x markdown2html.sh
+./markdown2html.sh ../data/DescribedInstances.md ../data/DescribedInstances.html
 python3 json2sqlite.py ../data/DescribedInstances.json ../data/DescribedInstances.sqlite
 ```
 
@@ -44,6 +53,8 @@ If you want to test a smaller set of random instance data, set the `TEST=1` envi
 ```
 TEST=1 ./buildall.sh
 ```
+
+or
 
 ```
 cd tools/
