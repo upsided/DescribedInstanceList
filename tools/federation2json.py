@@ -11,6 +11,14 @@ for about info and contact info, and put the results in a
 #shorten run time when testing. You can also set the environ variable "TEST"
 TEST_ONLY = False
 
+"""
+Randomize to spread out the load of many people using tool at once.
+There's not much I can do about the Mastodon.xyz GET, but I can at least
+reduce the pinging of an individual server to 100/20min or approx
+surge of 10 hits in a minute if 100 crazy people run buildall.sh at the exact same time
+"""
+RANDOMIZE = True
+
 from bs4 import BeautifulSoup   # pip3 install bs4
 import requests                 # pip3 install requests
 import sys, os
@@ -134,6 +142,9 @@ if __name__ == "__main__":
 
     json_data = PullInstanceList()
 
+    if RANDOMIZE:
+        random.shuffle(json_data)
+        
     if TEST_ONLY:
         random.shuffle(json_data)
         json_data = json_data[0:10]
