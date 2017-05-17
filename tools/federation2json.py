@@ -44,7 +44,7 @@ def PullInstanceList():
     r.raise_for_status()
 
     if r.status_code != 200:
-        eprint("Deciding not to download instances.mastodon.xyz because of strange status code " + str(r.status_code)
+        eprint("Deciding not to download instances.mastodon.xyz because of strange status code " + str(r.status_code))
         sys.exit(-1) #prob should be an exception but hey
     else:
         return (json.loads(r.text))
