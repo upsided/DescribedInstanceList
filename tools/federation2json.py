@@ -41,9 +41,11 @@ def PullInstanceList():
 
     url = 'https://instances.mastodon.xyz/instances.json'
     r = requests.get(url)
+    r.raise_for_status()
 
     if r.status_code != 200:
-        sys.exit(-1)
+        eprint("Deciding not to download instances.mastodon.xyz because of strange status code " + str(r.status_code)
+        sys.exit(-1) #prob should be an exception but hey
     else:
         return (json.loads(r.text))
 
@@ -214,4 +216,14 @@ if __name__ == "__main__":
     f.write(json.dumps(aboutInstances, indent=4, separators=(',', ': ')))
     #print (aboutInstances)
     f.close()
+    # print out the fields we find
+    fields = {}
+    for i in aboutInstances:
+        for k,v in i.items():
+            fields[k] = v
+    
+    eprint("FIELDS FOUND:")
+    for k in fields:
+        eprint(k)
+        
     sys.exit(0)
