@@ -31,15 +31,22 @@ def eprint(*args, **kwargs):
     """just like print() but to stderr"""
     print(*args, file=sys.stderr, **kwargs)
 
-def PullInstanceList():
+def PullInstanceList(url=None, filename=None):
     """
     Download json from https://instances.mastodon.xyz/instances.json
     and return it as a dict
 
     Alternatively, crash with sys.exit(-1)
     """
-
-    url = 'https://instances.mastodon.xyz/instances.json'
+    if url == None:
+        url = 'https://instances.mastodon.xyz/instances.json'
+    
+    if filename != None:
+        # get the json from the file
+        f = open(filename)
+        s = f.read()
+        return json.loads(s)
+        
     r = requests.get(url)
     r.raise_for_status()
 
@@ -47,7 +54,7 @@ def PullInstanceList():
         eprint("Deciding not to download instances.mastodon.xyz because of strange status code " + str(r.status_code))
         sys.exit(-1) #prob should be an exception but hey
     else:
-        return (json.loads(r.text))
+        return r.json()
 
 def ExtractAboutInfo(html: str) -> dict:
     """
@@ -138,11 +145,20 @@ if __name__ == "__main__":
     if 'TEST' in os.environ and os.environ['TEST']:
         TEST_ONLY=True
 
+    # if a .json file is specified, redownload info from
+    # all those instances and create an updated version
+    # this can help with bashing mastodon.xyz & gets a minor speed boost
+    jsonFile = None
+    if 'JSON_FILE' in os.environ:
+        jsonFile = os.environ['JSON_FILE']
+        eprint("Using the data in '%s'...." % jsonFile)
+        
     filenameOut = "described_instances.json"
     if len(sys.argv) > 1:
         filenameOut = sys.argv[1]
 
-    json_data = PullInstanceList()
+    # Download the starter list 
+    json_data = PullInstanceList(filename=jsonFile)
 
     if RANDOMIZE:
         random.shuffle(json_data)
@@ -151,6 +167,7 @@ if __name__ == "__main__":
         random.shuffle(json_data)
         json_data = json_data[0:10]
 
+    # discover and store various info for each instance
     aboutInstances = []
     for instance in json_data :
         d = {}
@@ -161,23 +178,24 @@ if __name__ == "__main__":
         url = "https://" + instance['name'] + "/about/more"
 
         eprint ("Downloading \"" + url + "\"...")
-        r  = False
+
+        r  = False # check for failure
         try:
             r = requests.get(url, timeout=1.0)
-            if 'error' in d: del d['error']
-        except Exception as e:
+            if 'error' in d: del d['error'] # we succeded, so woot!
+            
+        except Exception as e: # FIXME: bad but how many request/urllib exceptions must I account for? Unknown...
             eprint ("Couldn't download " + url + "(%s)" % str(e))
             d['error'] = str(e)
 
-        # add more info
-        
+        # add more info scraped from HTML and such        
         if r != False and r.status_code == 200:
             aboutDict = ExtractAboutInfo(r.text)
             for key in aboutDict.keys():
                 d[key] = aboutDict[key]
             d['url'] = url
             d['html'] = r.text
-            d['domain'] = instance['name']
+            d['domain'] = instance['name'] # FIXME: probably the wrong idea here
             d['reachable'] = True
         else:
             d['reachable'] = False
@@ -185,9 +203,14 @@ if __name__ == "__main__":
         d['lastCheck'] = time.time()
 
         if d['reachable']:
-            # try to get the json description
-            # it's the "short description" so we put it in 'tagline'
+            # try to get the json at the instance itself.
+            # this contains:
+            #   short description
+            #   contact email
+            #   and other stuff
+
             url = "https://%s/api/v1/instance.json" % instance['name']
+
             try:
                 r = requests.get(url, timeout=1.0)
                 if r.status_code == 200:
@@ -197,26 +220,34 @@ if __name__ == "__main__":
                         if len(theDict['description']) > 0:
                             d['tagline'] = theDict['description']
                         del theDict['description']
+                    
                     if 'email' in theDict:
                         if len(theDict['email']) > 0:
                             d['email'] = theDict['email']
                         del theDict['email']
                     
+                    # so the extra stuff, add it only
+                    # if it's not in my list already
+                    # because I dunno if there's a name conflict
                     for k,v in theDict.items():
-                        if len(v)>0:
+                        if k not in d and len(v) > 0:
                             d[k] = v
             
             except Exception as e: # so many exception types, hard to do anything but this
               eprint ("Skipping extra JSON info for " + url + "(%s)" % str(e))
           
-                       
+        # WHEW!
         aboutInstances.append(d)
+
+    # write the JSON output 
 
     f = open(filenameOut, "w")
     f.write(json.dumps(aboutInstances, indent=4, separators=(',', ': ')))
-    #print (aboutInstances)
     f.close()
+
     # print out the fields we find
+    # this is useful in decided the SCHEMA
+    # (but is bad for *using* as schema, since it's downloaded from net
     fields = {}
     for i in aboutInstances:
         for k,v in i.items():
@@ -225,5 +256,4 @@ if __name__ == "__main__":
     eprint("FIELDS FOUND:")
     for k in fields:
         eprint(k)
-        
-    sys.exit(0)
+

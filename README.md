@@ -60,3 +60,9 @@ or
 cd tools/
 TEST=1 python3 federation2json my_testdata.json
 ```
+
+if you want to simply update a previous .json file (skipping the instance list download from mastodon.xyz):
+```
+JSON_FILE=data/DescribedInstances.json ./buildall.sh
+```
+

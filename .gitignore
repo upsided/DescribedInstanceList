@@ -2,6 +2,7 @@
 *.json
 *.html
 *.sqlite
+*.tmp
 
 # markdown is troublesome, but ignore the stuff in data
 data/*.md

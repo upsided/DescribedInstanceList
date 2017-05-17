@@ -1,4 +1,14 @@
 #!/usr/bin/env python3
+"""
+usage:
+json2markdown.py in_filename.json out_filename.md
+
+This renders a markdown file using instance data in the .json
+which was previously generated with federation2json.py
+
+"""
+
+
 import json
 import sys
 import time
@@ -20,14 +30,23 @@ Please note that some instances may contain offensive content!
 """ % theDate
 
 def eprint(*args, **kwargs):
+    """just like print() but for stderr"""
     print(*args, file=sys.stderr, **kwargs)
 
 def NameHead(inst) -> str:
+    """
+    given an instance dictionary, return a heading markdown that contatins 
+    the name of the instance and a preview link at mastoview
+    """
     out = "## [" + inst['name'] + "] "
     out = "## [%s](%s) [(preview)](http://www.unmung.com/mastoview?url=%s&view=local)\n" % (inst['name'], inst['url'], inst['name'])
     return out
 
 def Tagline(i: dict) -> str:
+    """
+    given an instance dictionary, return markdown of its short description
+    or long description if we must...
+    """
     if 'tagline' in i.keys():
         out =  i['tagline']
     else:
@@ -38,19 +57,44 @@ def Tagline(i: dict) -> str:
 
     return out
 
+def str2int2str(thing):
+    """
+    given a string of a possible integer,
+    return a nice looking version like 34,395
+    or just use the string if something goes wrong
+    """
+    i = 0
+    try:
+        i = int(thing)
+        return format (i, ',d')
+    except:
+        return thing
+    
 def Users(i: dict) -> str:
+    """
+    given a instance dictionary, return markdown paragraph showing some
+    general stats like | users: 20 | toots: 5,3894 | connections: 338 |
+    """
     out = ""
     if 'users' in i.keys():
-        out = out + "| Users: %s " % i['users']
+        u = str2int2str(i['users'])
+        out = out + "| Users: %s " % u
     if 'statuses' in i.keys():
-        out = out + "| Toots: %s " % i['statuses']
+        s = str2int2str(i['statuses'])
+        out = out + "| Toots: %s " % s
     if 'connections' in i.keys():
-        out = out + "| Connections: %s " % i['connections']
+        c = str2int2str(i['connections'])
+        out = out + "| Connections: %s " % c
+
     if len(out) > 0: out = out + "|"
     out = "\n" + out + "\n\n"
     return out
 
 def Description(i: dict) -> str:
+    """
+    given an instance dictionary,
+    return the markdown for the long description
+    """
     if 'description' not in i.keys():
         return ""
 
@@ -59,6 +103,11 @@ def Description(i: dict) -> str:
     return out
 
 def Email(i: dict) -> str:
+    """
+    given an instance dictionary,
+    return the markdown (with linke) for the email
+    or "not available" if it doesn't exist
+    """
     if 'email' in i.keys():
         out = "Email: [%s](mailto:%s)\n\n" % (i['email'], i['email'])
         return out
@@ -67,6 +116,12 @@ def Email(i: dict) -> str:
     return out
 
 def Admin(i: dict) -> str:
+    """
+    given an instance dictionary,
+    return the markdown for the admin (of assumed form @gargron)
+    in a handy link that can be clicked on an HTML page
+    to read the admin's profile.
+    """
     if 'admin' in i.keys():
         out = "Admin: [%s@%s](https://%s/%s)\n\n" % (i['admin'], i['name'], i['name'], i['admin'] )
         return out
@@ -75,30 +130,31 @@ def Admin(i: dict) -> str:
     return out
 
 if __name__ == "__main__":
+
     if len(sys.argv) != 3:
-        print ("usage: toMarkdown.py input.json output.md")
+        print ("usage: json2markdown.py input.json output.md")
         sys.exit(1)
 
-    In = open(sys.argv[1])
+    InFile = open(sys.argv[1])
 
-    instances = json.loads(In.read())
-    In.close()
+    instances = json.loads(InFile.read())
+    InFile.close()
 
     instances = sorted(instances, key=lambda u: 100.0-u['uptime'])
 
-    Out = open(sys.argv[2], "w+")
+    OutFile = open(sys.argv[2], "w+")
 
-    Out.write(head)
+    OutFile.write(head)
     for i in instances:
         eprint("Generating markdown for: %s" % i['name'])
         if i['reachable']:
             if 'openRegistrations' in i.keys() and i['openRegistrations']:
-                Out.write(NameHead(i))
-                Out.write(Users(i))
-                Out.write(Tagline(i))
-                Out.write("\n\n")
-                Out.write(Description(i))
-                Out.write(Email(i))
-                Out.write(Admin(i))
+                OutFile.write(NameHead(i))
+                OutFile.write(Users(i))
+                OutFile.write(Tagline(i))
+                OutFile.write("\n\n")
+                OutFile.write(Description(i))
+                OutFile.write(Email(i))
+                OutFile.write(Admin(i))
 
-    Out.close()
+    OutFile.close()
