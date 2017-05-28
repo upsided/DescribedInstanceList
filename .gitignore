@@ -4,11 +4,14 @@
 *.sqlite
 *.tmp
 
+# local testing backups
+*.bak
+
 # markdown is troublesome, but ignore the stuff in data
 data/*.md
 
 #keep the template file
-!tools/*.html
+!tools/style-chunk.html
 
 #ignore data directory
 data/*

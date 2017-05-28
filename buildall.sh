@@ -28,8 +28,8 @@ if ! python3 tools/json2sqlite.py "${BASENAME}.json" "${BASENAME}.sqlite"; then
     exit 1
 fi
 
-cd "$SOURCE_DIR/tools"
-if ! ./markdown2html.sh "${BASENAME}.md" "${BASENAME}.html"; then
+#cd "$SOURCE_DIR/tools"
+if ! tools/json2html.py "${BASENAME}.json" "${BASENAME}.html"; then
     cd $PWD
     exit 1
 fi

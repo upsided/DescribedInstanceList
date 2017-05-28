@@ -2,8 +2,9 @@
 <html>
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+<meta name="viewport" content="width=device-width, initial-scale=0.8, user-scalable=yes">
 <style>
+
 h1,
 h2,
 h3,
@@ -63,6 +64,7 @@ h1 {
 }
 h2 {
     font-size: 24px;
+    margin-bottom: 0px;
 }
 h3 {
     font-size: 18px;
@@ -81,6 +83,91 @@ hr {
     border: 0;
     border-bottom: 1px solid #ccc;
 }
+
+.instance-chunk {
+    padding: 26px;
+    margin-bottom: 30px;
+    box-shadow: 2px 2px 4px 2px #888888;
+}
+
+.instance-left {
+    float: left;
+    width: 151px;
+    min-height: 200px;
+}
+
+.instance-right {
+    border-left-style: solid;
+    border-left-width: 1px;
+    padding-left: 8px;
+    margin-left: 160px;
+    min-height: 240px;
+}
+.instance-head {
+    font-size: 24px;
+    padding-top: 0px;
+}
+h4.instance-head {
+    font-size:12px;
+    padding-top: 0px;
+    text-align: right;
+}
+
+.instance-clicks {
+    font-size: 18px;
+    text-align: right;
+    
+}
+
+.description-head {
+}
+
+.description-body {
+}
+.description-long {
+    margin-top: 20px;
+}
+
+.contact-details {
+    padding-top: 20px;
+}
+.stats {
+    padding-bottom: 10px;
+    font-weight: bold;
+}
+
+div.toot-group {
+}
+div.toot {
+}
+div.avvi-wall{
+max-width: 155px;
+float:left;
+}
+
+div.toot-disclosure{
+min-height: 36px;
+}
+
+div.toot-avvi {
+float: left;
+margin: 2px;
+}
+div.avvi-wall-avvi{
+float: left;
+margin-bottom: -4px;
+}
+img.avvi-image {
+}
+div.toot-content {
+min-height: 40px;
+}
+div.toot-media {
+}
+img.media-image {
+    max-width: 100;
+}
+
 blockquote {
     padding: 13px 13px 21px 15px;
     margin-bottom: 18px;
@@ -151,8 +238,18 @@ sup {
 		page-break-inside: avoid;
 	}
 }
+
+
 </style>
 <title>Described Instance List</title>
 
+<script src="https://code.jquery.com/jquery-3.2.1.slim.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.lazyload/1.9.1/jquery.lazyload.min.js"></script>
+<script>
+    $(document).ready(function(){
+        $("img.lazy").lazyload();
+        }
+    );
+</script>
 </head>
 <body>

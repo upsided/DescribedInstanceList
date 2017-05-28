@@ -38,8 +38,8 @@ def NameHead(inst) -> str:
     given an instance dictionary, return a heading markdown that contatins 
     the name of the instance and a preview link at mastoview
     """
-    out = "## [" + inst['name'] + "] "
-    out = "## [%s](%s) [(preview)](http://www.unmung.com/mastoview?url=%s&view=local)\n" % (inst['name'], inst['url'], inst['name'])
+    out = "## [" + inst['title'] + "] "
+    out = "## [%s](%s) [(preview)](http://www.unmung.com/mastoview?url=%s&view=local)\n" % (inst['domain'], inst['url'], inst['domain'])
     return out
 
 def Tagline(i: dict) -> str:
@@ -123,7 +123,7 @@ def Admin(i: dict) -> str:
     to read the admin's profile.
     """
     if 'admin' in i.keys():
-        out = "Admin: [%s@%s](https://%s/%s)\n\n" % (i['admin'], i['name'], i['name'], i['admin'] )
+        out = "Admin: [%s@%s](https://%s/%s)\n\n" % (i['admin'], i['domain'], i['domain'], i['admin'] )
         return out
     else:
         out = "Admin: Not Available\n\n"
@@ -146,7 +146,7 @@ if __name__ == "__main__":
 
     OutFile.write(head)
     for i in instances:
-        eprint("Generating markdown for: %s" % i['name'])
+        eprint("Generating markdown for: %s" % i['domain'])
         if i['reachable']:
             if 'openRegistrations' in i.keys() and i['openRegistrations']:
                 OutFile.write(NameHead(i))
