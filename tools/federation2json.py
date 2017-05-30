@@ -45,7 +45,7 @@ except FeatureNotFound:
     eprint("Couldn't find '%s', using builtin parser for HTML 5" % H5PARSER)
     H5PARSER = 'html.parser' 
     
-languageMap = {
+languageMap = { #FIXME: these should be in native tongue
 "ab":"Abkhaz", "aa":"Afar", "af":"Afrikaans", "ak":"Akan", "sq":"Albanian", "am":"Amharic",
 "ar":"Arabic", "an":"Aragonese", "hy":"Armenian", "as":"Assamese", "av":"Avaric",
 "ae":"Avestan", "ay":"Aymara", "az":"Azerbaijani", "bm":"Bambara", "ba":"Bashkir",
@@ -121,7 +121,7 @@ def munge(instanceList: list, tootLimit=None) -> list:
         #replace required but missing with "?"
         for n in neededList:
             if n not in i:
-                i[n] = "?"
+                i[n] = "?" #FIXME: this is bad for SQL and just in general icky
         
         # class tags for filtering
         i['class_tags'] = []
@@ -177,7 +177,14 @@ def purify(sometext: str, absoluteURL=None) -> str:
                 l = link['href'].strip().lstrip('./').lstrip('/')
                 link['href'] = absoluteURL + l
                 eprint ("absolutified to %s " %  link['href'] )
-    
+
+        for img in s.find_all('img', src=True):
+            if img['src'].find(':') < 0:
+                eprint ("Absolutifying URL %s" % (img['src']) )
+                l = img['src'].strip().lstrip('./').lstrip('/')
+                img['src'] = absoluteURL + l
+                eprint ("absolutified to %s " %  img['src'] )
+                
     s = s.prettify()
 
     # remove repetitive </br> cuz damn
