@@ -147,6 +147,7 @@ def scrapeForInstances(domain):
             if dom == None:
                 eprint('NONE domain?')
                 eprint(t)
+            
             queueLock.acquire()
             if dom not in instance_collection:
                 instanceFound = True
@@ -155,7 +156,12 @@ def scrapeForInstances(domain):
                 instance_collection[dom] = {'nextURL': nextURL}
                 queueLock.release()
                 eprint("putting %s in queue..." % dom)
-                workQueue.put(dom)
+                while True:
+                    try:
+                        workQueue.put(dom, False)
+                        break
+                    except queue.full:
+                        pass
             else:
                 queueLock.release()
                 
@@ -245,6 +251,9 @@ def DoItAll():
         t.join()
                
 if __name__ == "__main__":
+    if 'THREADS' in os.environ:
+        THREADS_MAX=int(os.environ['THREADS'])
+    eprint(sys.argv[1])
     readInstances()
     if len(instance_collection.keys()) == 0:
         eprint("Scraping from scratch")

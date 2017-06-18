@@ -20,7 +20,7 @@ As of %s
 
 This is a list of Mastodon instances with descriptions and contact information. It also contains preview links, so that you can better decide which instance to join.
 
-I have removed instances that aren't accepting open registrations. Some instances couldn't be reached, so they are left out as well. The list is sorted by server uptime percentage. This extra metadata comes from list.mastodon.xyz/instances.json, since I do not know how to query the federation myself.
+I have removed instances that aren't accepting open registrations. Some instances couldn't be reached, so they are left out as well.This extra metadata comes from list.mastodon.xyz/instances.json, since I do not know how to query the federation myself.
 
 To view stats about the instance (and visit its about page) click its name. To see a preview of toots at the instance, click "preview."
 
@@ -140,7 +140,7 @@ if __name__ == "__main__":
     instances = json.loads(InFile.read())
     InFile.close()
 
-    instances = sorted(instances, key=lambda u: 100.0-u['uptime'])
+    #instances = sorted(instances, key=lambda u: 100.0-u['uptime'])
 
     OutFile = open(sys.argv[2], "w+")
 
