@@ -1,0 +1,133 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=0.8, user-scalable=yes" />
+<style>
+$page.style
+</style>
+<title>$page.title</title>
+$page.scripts
+</head>
+<body>
+<h1>$page.title</h1>
+<h4>$page.date</h4>
+
+<div class="page-description">
+#if $FunVersion
+    <p>This is a list of Mastodon instances with descriptions and contact information. It also contains preview links, so that you can better decide which instance to join.</p>
+    <p>You can see a <a href="./${page.basename}.html">lighter version, without toot previews here.</a>
+    <p>Please note that some instances may contain offensive content!</p>
+#else
+    <p>This is a list of Mastodon instances with descriptions and contact information. It also contains preview links, so that you can better decide which instance to join.</p>
+    <p>You can see a heavier, but more <a href="./$page.basename-fun.html">fun version here.</a>
+    <p>Please note that some instances may contain offensive content!</p>
+#end if
+    <p>For help and complaints contact: <a href="https://octodon.social/@upside">@upside@octodon.social</a></p>
+
+   <p><button id="filter-button" class="ui-button ui-widget ui-corner-all">Filter...</button></p>
+</div>
+
+<div id="filter-dialog" title="Instance Filter" style="display: none">
+    <input type="text" name="searchBox" id="searchBox" value="" class="ui-button ui-widget ui-corner-all" >
+    <p id="filtercount"></p>
+#if len($page.languages) > 0
+    <div id="languageFilters">
+    <h4 class="dialog-head">Languages<span style="font-size: smaller"><a href="#" onclick="clearChecks(this);">[clear]</a></small></h4>
+#for $l in $page.languages
+    <span class="checkbox-entry"><input type="checkbox" class="ui-button ui-widget ui-corner-all" id="$l.id" >$l.name</input></span>
+#end for
+    </div>
+#end if
+    <div id="activityFilters">
+#for $group in $page.filtergroups
+        <div id="$group.id">
+        <h4 class='dialog-head'>$group.title<span style="font-size: smaller"><a href="#" onclick="clearChecks(this);">[clear]</a></small></h4>
+#for $filter in $group.filters
+        <span class="radio-entry"><input type="checkbox" name="${group.id}-radio" value="$filter.id" id="$filter.id" >$filter.title</span>
+#end for
+        </div>
+#end for
+    </div>
+    <button id='applyfilter-button' class="ui-button ui-widget ui-corner-all">Apply</button>
+
+</div>
+<div id="instances-container">
+#for $i in $instances
+    <a name="$i.domain" id="$i.domain"></a>
+    <div class="instance-chunk
+#for $classy in $i.class_tags
+        $classy #slurp
+#end for
+        ">
+
+        <div class="instance-left">
+#if $FunVersion
+            <div class="avvi-wall"> 
+#for tootSample in $i['tootSample']
+                <div class="avvi-wall-avvi">
+                    <a href="$tootSample.url">
+                        <img data-original="$tootSample.avvi" title="$tootSample.content_text" width="30" height="30" class='avvi-image lazy' width=30 height=30>
+                    </a>
+                </div>
+#end for ## avvi-wall
+            </div> 
+#end if
+            <h4 class="instance-head"><a href="https://$i.domain" target="_blank">$i.domain<a></h4>
+            <p class="instance-clicks"> <a href="$i.url" target="_blank">about</a></p>
+            <p class="instance-clicks"><a href="http://www.unmung.com/mastoview?url=$i.domain&view=local" target="_blank">preview</a></p>
+#if 'openRegistrations' in $i and $i.openRegistrations
+            <p class="instance-clicks"><a href="https://$i.domain/about" target="_blank">join</a></p>
+#end if
+        </div>
+        
+        <div class="instance-right">
+            <div class="description-head">
+                <h2 class="instance-head">$i.title</h2>
+            </div>
+            <div class="description-body">
+                <div class='stats'>
+                    Users: $i.users . Toots: $i.statuses . Connections: $i.connections . Language: $i.language_name_native
+                </div>
+                 
+                <div class="description-short">
+                    <p>$i.tagline</p>
+                </div>
+            
+                <div class="description-long">
+#if len($i['description']) > 500:
+                    <details><summary>More Info...</summary>
+                        $i.description
+                    </details>
+#else
+                $i.description
+#end if            
+                </div>
+
+                <div class="contact-details">
+                    <p>Email: 
+#if len($i.email) == 0
+                    Not Available
+#else
+                    <a href="mailto:$i.email">$i.email</a>
+#end if
+                    </p>
+            
+                    <p>
+                    Admin: 
+#if len($i.admin) == 0
+                    Not Available
+#else
+                    <a href="https://$i.domain/$i.admin">$i.admin@$i.domain</a>
+#end if
+                    </p>
+            </div>
+        </div>
+
+## instance-right end            
+        </div>
+    </div>
+#end for ## instance chunk
+</div>
+</body>
+</html>

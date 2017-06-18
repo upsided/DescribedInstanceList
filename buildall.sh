@@ -6,12 +6,8 @@ BASENAME="${SOURCE_DIR}/data/DescribedInstances"
 
 cd "$SOURCE_DIR"
 
-if ! chmod +x tools/markdown2html.sh; then # just cuz
-    cd $PWD
-    exit 1
-fi
-
 mkdir -p "${SOURCE_DIR}/data/"
+
 
 if ! python3 tools/federation2json.py "${BASENAME}.json"; then
     cd $PWD
@@ -28,8 +24,7 @@ if ! python3 tools/json2sqlite.py "${BASENAME}.json" "${BASENAME}.sqlite"; then
     exit 1
 fi
 
-#cd "$SOURCE_DIR/tools"
-if ! tools/json2html.py "${BASENAME}.json" "${BASENAME}.html"; then
+if ! python3 tools/TemplateRunner.py "${BASENAME}.json" "${BASENAME}"; then
     cd $PWD
     exit 1
 fi

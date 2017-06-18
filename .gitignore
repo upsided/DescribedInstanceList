@@ -16,3 +16,4 @@ data/*.md
 #ignore data directory
 data/*
 
+__pycache__
