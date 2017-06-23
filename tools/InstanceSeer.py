@@ -40,8 +40,7 @@ def eprint(*args, **kwargs):
 def writeInstances():
     global instance_collection;
     filename = sys.argv[1]
-    eprint("Saving...")
-    f = open(filename, "w")
+    eprint("Saving to %s..." % (filename))
     listicle = []
     #convert to list for compatibility with federation2json.py
     for k,v in instance_collection.items():
@@ -49,7 +48,10 @@ def writeInstances():
         d['domain'] = k
         listicle.append(d)
         
-    f.write(json.dumps(listicle, indent=4, sort_keys=True))
+    f = open(filename, "w")
+    s = json.dumps(listicle, indent=4, sort_keys=True)
+    eprint("LENGTH of WRITE: ", len(s))
+    f.write(s)
     f.close()
 
 def readInstances():
@@ -160,7 +162,7 @@ def scrapeForInstances(domain):
                     try:
                         workQueue.put(dom, False)
                         break
-                    except queue.full:
+                    except queue.Full:
                         pass
             else:
                 queueLock.release()
@@ -231,7 +233,12 @@ def DoItAll():
     for k in klist:
         eprint("Adding %s to queue" % k)
         #queueLock.acquire()
-        workQueue.put(k)
+        while True:
+            try: 
+                workQueue.put(k, False)
+                break
+            except queue.Full:
+                pass
         #queueLock.release()
 
     eprint ("Done adding work")
@@ -251,9 +258,10 @@ def DoItAll():
         t.join()
                
 if __name__ == "__main__":
+    
     if 'THREADS' in os.environ:
         THREADS_MAX=int(os.environ['THREADS'])
-    eprint(sys.argv[1])
+    # eprint(sys.argv[1])
     readInstances()
     if len(instance_collection.keys()) == 0:
         eprint("Scraping from scratch")
@@ -261,10 +269,11 @@ if __name__ == "__main__":
         instance_collection[STARTER_INSTANCE] = {'nextURL': URL}
         DoItAll()
     else:
-        eprint("Scraping from existing file...")
+        eprint("Scraping from existing file %s..." % (sys.argv[1]))
         #index = random.choice(list(instance_collection.keys()))
         #scrapeForInstances(index)
         DoItAll()
-        
     
+    writeInstances()
+    eprint("Instance count: ", len(list(instance_collection.keys())))
     
