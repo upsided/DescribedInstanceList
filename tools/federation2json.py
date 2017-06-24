@@ -22,7 +22,7 @@ RANDOMIZE = True
 THREADS_MAX = 1 # jack it up to 50 for faster download
 DEFAULT_MASTER = 'https://instances.mastodon.xyz/instances.json'
 #DEFAULT_MASTER = 'https://upsided.github.io/instances.json'
-REQUEST_TIMEOUT = 3.0
+REQUEST_TIMEOUT = 20.0
 
 from bs4 import BeautifulSoup, CData, FeatureNotFound   # pip3 install bs4
 import requests                 # pip3 install requests
