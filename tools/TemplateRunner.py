@@ -286,7 +286,8 @@ def sortByHash(instancelist):
 if __name__ == "__main__":
     import datetime
     basename = sys.argv[2]
-
+    justfile = basename.split('/')[-1]
+    
     f = open(sys.argv[1])
     instances = json.loads(f.read())
     f.close()
@@ -308,7 +309,7 @@ if __name__ == "__main__":
             'scripts': "",
             'style': "",
             'date': theDate,
-            'basename': basename,
+            'basename': justfile,
             'languages': languages,
             'filtergroups': filtergroups
             }
