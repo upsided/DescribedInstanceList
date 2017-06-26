@@ -23,6 +23,7 @@ Oh wow, library errors? This is may be why. You need:
 |tools/TemplateRunner.py | generates two HTML files from .json file, above  | data/DescribedInstances.html |
 |tools/json2sqlite.py | generates an sqlite database of the .json file, above | data/DescribedInstances.sqlite |
 |buildall.sh | generates all of the above | data/* |
+|tools/AboutThisInstance.py | delivers the json descripton for a single instance | none |
 
 ### Warning
 These tools are *ad hoc kludges* to get the job done only. This is a simple one-shot tool that you can run for 30 minutes to consume all the info out there. I may turn this into a more interruption-friendly database updater later.
@@ -46,6 +47,13 @@ python3 json2sqlite.py ../data/DescribedInstances.json ../data/DescribedInstance
 ```
 
 This is pretty much what the `buildall.sh` script does.
+
+### About This Instance
+To see a json file describing an instance, try
+```
+python3 AboutThisInstance.py mastodon.social
+```
+This might be more useful than the monolithic approach above.
 
 ### Tinkering
 To test a smaller set of random instance data, set the `TEST=1` environment variable, e.g.:

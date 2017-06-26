@@ -45,6 +45,8 @@ def truncateToots(instances: list, limit: int):
     for i in instances:
         if 'tootSample' in i:
             i['tootSample'] = i['tootSample'][:limit]
+        else:
+            i['tootSample'] = []
     return instances
 
 def deferAllImages(soup: BeautifulSoup) -> BeautifulSoup:
@@ -84,7 +86,7 @@ def filterTag(value, listofValues: list, labels: list) -> str:
     """
     try:
         value = int(value)
-    except ValueError:
+    except (ValueError, TypeError):
         return None
 
     #probably not necessary:
@@ -143,9 +145,11 @@ def makeTags(instances):
     def build(d, name):
         x = []
         for item in d:
+            eprint("munging for ", item['domain'], name)
             try:
-                x.append(int(item[name]))
-            except ValueError:
+                if name in item:
+                  x.append(int(item[name]))
+            except (ValueError, TypeError):
                 pass
         #return sorted(list(set(x))) # remove duplicates, dunno if this is more intuitive
         return sorted(x)
@@ -169,8 +173,15 @@ def makeTags(instances):
     
     for i in instances:
         class_tags = []
+        #eprint(i['domain'])
         if 'language' in i:
-            print (i['language'], i['language_name'])
+            if i['language'] == None:
+                i['language'] = 'unknown'
+                i['language_name_native'] = 'unknown'
+                i['language_name'] = 'unknown'
+
+            #print(i['language'])
+            #print (i['language'], i['language_name'])
             l =  i['language']
             lname = None
             if 'language_name_native' not in i:
@@ -178,7 +189,7 @@ def makeTags(instances):
                 i['language_name_native'] = lname
             else:
                 lname = i['language_name_native']
-                
+            print(l, lname)
             if len(re.findall(r'^\w+$', l)) > 0:
                 class_tags.append("language-" + l)
                 if l not in languages:
@@ -191,15 +202,27 @@ def makeTags(instances):
                             
                             
                                 
-        t = filterTag(i['statuses'], status, ['activity-low', 'activity-medium', 'activity-high'])        
+        if 'statuses' in i:
+          t = filterTag(i['statuses'], status, ['activity-low', 'activity-medium', 'activity-high'])
+        else:
+          t = None
+          
         if t != None: class_tags.append(t)
         else: class_tags.append('activity-unknown')
 
-        t = filterTag(i['users'], user, ['usercount-low', 'usercount-medium', 'usercount-high'])
+        if 'users' in i:
+          t = filterTag(i['users'], user, ['usercount-low', 'usercount-medium', 'usercount-high'])
+        else:
+          t = None
+          
         if t != None: class_tags.append(t)
         else: class_tags.append('usercount-unknown')
 
-        t = filterTag(i['connections'], con, ['connectioncount-low', 'connectioncount-medium', 'connectioncount-high'])
+        if 'connections' in i:
+          t = filterTag(i['connections'], con, ['connectioncount-low', 'connectioncount-medium', 'connectioncount-high'])
+        else:
+          t = None
+          
         if t != None: class_tags.append(t)
         else: class_tags.append('connectioncount-unknown')
     
@@ -283,6 +306,43 @@ def sortByHash(instancelist):
     l = sorted(instancelist, key=lambda x: calcHash(x['domain']))
     return l
 
+def skipUnreachables(instanceList):
+  thelist = []
+  for i in instanceList:
+    if 'reachable' in i and i['reachable']:
+      thelist.append(i)
+
+  return thelist
+
+def default(dictionary: dict, key, default) -> dict:
+    if key not in dictionary:
+        dictionary[key] = default
+    return dict
+    
+def placeDefaults(instanceList):
+  """
+  this is needed because the scraper does not wish to assert defaults
+  into the database, but the Template Runner needs something to show
+  """
+  
+  l = []
+  for i in instanceList:
+
+    default(i, 'tootSample', [])
+    default(i, 'name', i['domain'])
+    default(i, 'title', i['name'])
+
+    default(i, 'nameplate', "no description")
+    default(i, 'tagline', i['nameplate'])
+    default(i, 'description', i['tagline'])
+
+    default(i, 'email', "")
+    default(i, 'admin', "")
+    default(i, 'version', None)
+    default(i, 'error', None)
+    l.append(i)
+  return l
+      
 if __name__ == "__main__":
     import datetime
     basename = sys.argv[2]
@@ -295,11 +355,13 @@ if __name__ == "__main__":
     if SHORTEN_TO != None:
         instances = instances[:SHORTEN_TO]
     
+    instances = skipUnreachables(instances)
+    instances = placeDefaults(instances)
     #instances = munge(instances, tootLimit=16)
     instances = truncateToots(instances, 16)
     instances, languages, filtergroups = makeTags(instances)
     instances = sortByHash(instances)
-
+    
     for FunVersion in [True, False]:
 
         theDate = datetime.datetime.utcnow().strftime("%A %d %b %I:%M:%S %p GMT")

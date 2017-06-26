@@ -38,7 +38,11 @@ def NameHead(inst) -> str:
     given an instance dictionary, return a heading markdown that contatins 
     the name of the instance and a preview link at mastoview
     """
-    out = "## [" + inst['title'] + "] "
+    if 'title' in inst:
+      out = "## [" + inst['title'] + "] "
+    else:
+      out = "## [" + inst['domain'] + "] "
+    
     out = "## [%s](%s) [(preview)](http://www.unmung.com/mastoview?url=%s&view=local)\n" % (inst['domain'], inst['url'], inst['domain'])
     return out
 
