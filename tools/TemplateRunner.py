@@ -49,6 +49,24 @@ def truncateToots(instances: list, limit: int):
             i['tootSample'] = []
     return instances
 
+def purifyText(sometext: str) -> str:
+    " lots of room for improvement "
+    s = re.sub(r'<[^>]*script[^>]*>', '', sometext)
+    s = re.sub(r'<', '&lt;', s)
+    s = re.sub(r'>', '&gt;', s)
+    s = re.sub(r'"', '&quot;', s)
+    return s
+    
+def html2text(html: str) -> str:
+  s = BeautifulSoup(html, PARSER)
+  return s.get_text()
+
+def toot2text(instances: list):
+    for i in instances:
+        if 'tootSample' in i:
+            for t in i['tootSample']:
+              t['content_text'] = purifyText(html2text(t['content']))
+    return instances
 def deferAllImages(soup: BeautifulSoup) -> BeautifulSoup:
     for img in soup.findAll("img"):
         if 'src' in img.attrs:
@@ -226,17 +244,17 @@ def makeTags(instances):
         if t != None: class_tags.append(t)
         else: class_tags.append('connectioncount-unknown')
     
-        if 'email' in i and len(i['email']) != 0:
+        if 'email' in i and i['email'] != None and len(i['email']) != 0:
             class_tags.append("email-yes")
         else:
             class_tags.append("email-no")
 
-        if 'admin' in i and len(i['admin']) != 0:
+        if 'admin' in i and i['admin'] != None and len(i['admin']) != 0:
             class_tags.append("admin-yes")
         else:
             class_tags.append("admin-no")
         
-        if 'openRegistrations' in i and i['openRegistrations']:
+        if 'open_registrations' in i and i['open_registrations']:
             class_tags.append("registrations-yes")
         else:
             class_tags.append("registrations-no")
@@ -317,6 +335,8 @@ def skipUnreachables(instanceList):
 def default(dictionary: dict, key, default) -> dict:
     if key not in dictionary:
         dictionary[key] = default
+    elif dictionary[key] == "" or dictionary[key] == None:
+        dictionary[key] = default
     return dict
     
 def placeDefaults(instanceList):
@@ -331,7 +351,11 @@ def placeDefaults(instanceList):
     default(i, 'tootSample', [])
     default(i, 'name', i['domain'])
     default(i, 'title', i['name'])
-
+    default(i, 'url', "https://" + i['domain'] + "/about/more")
+    default(i, 'language', 'unknown')
+    default(i, 'language_name', i['language'])
+    default(i, 'language_name_native', i['language_name'])
+    
     default(i, 'nameplate', "no description")
     default(i, 'tagline', i['nameplate'])
     default(i, 'description', i['tagline'])
@@ -359,6 +383,7 @@ if __name__ == "__main__":
     instances = placeDefaults(instances)
     #instances = munge(instances, tootLimit=16)
     instances = truncateToots(instances, 16)
+    instances = toot2text(instances)
     instances, languages, filtergroups = makeTags(instances)
     instances = sortByHash(instances)
     
