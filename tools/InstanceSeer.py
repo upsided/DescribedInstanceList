@@ -38,6 +38,9 @@ def eprint(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
 
 def writeInstances():
+    """
+    Write all of the instance data to the file.
+    """
     global instance_collection;
     filename = sys.argv[1]
     eprint("Saving to %s..." % (filename))
@@ -55,6 +58,9 @@ def writeInstances():
     f.close()
 
 def readInstances():
+    """
+    import all the instances from the global file
+    """
     global instance_collection;
     filename = sys.argv[1]
     try:
@@ -76,6 +82,10 @@ def readInstances():
     
 getDomainFromAcct = re.compile(r'.+@([^@]+)$')
 def extractDomainFromAcct(acct): # acct in form "upside@octodon.social"
+    """
+    given an account in the form @gargron@mastodon.social, 
+    extract the "mastodon.social"
+    """
     m = getDomainFromAcct.match(acct)
     if m == None:
         return None
@@ -83,6 +93,9 @@ def extractDomainFromAcct(acct): # acct in form "upside@octodon.social"
         return m[1]
 getDomain = re.compile("^https?:\/\/([^/]+)\/")
 def extractDomainFromURL(url):
+    """
+    given a normal HTTP url, extract the domain.
+    """
     m = getDomain.match(url)
     if m == None:
         return None
@@ -90,6 +103,11 @@ def extractDomainFromURL(url):
         return m[1]
            
 def grabMoreToots (url):
+    """
+    grab toots by downloading the json file at the provided url.
+    Return a tuple of (data, nextURL) link which gives the data
+    and the url to use next time if you want more toots.
+    """
     eprint("Grabbing toots at ", url)
     r = requests.get(url, timeout=8.0) #large timeout because we're just peepoles!
     r.raise_for_status()
@@ -102,6 +120,11 @@ def grabMoreToots (url):
 
        
 def scrapeForInstances(domain):
+    """
+    grab the toots at the provided domain and scrape them to discover
+    more domains. If a new instance is found, put it in the global
+    worker queue.
+    """
     nextURL = "https://%s/api/v1/timelines/public?limit=40" % domain
     
     queueLock.acquire()
@@ -186,6 +209,10 @@ class workerThread (threading.Thread):
         eprint ("Exiting " + self.name)
 
 def process_data(threadName, q):
+    """
+    grab from the queue the next available domain to process,
+    and do it.
+    """
     global exitFlag
     while not exitFlag:
         i= None
@@ -201,6 +228,12 @@ def process_data(threadName, q):
 
 
 def DoItAll():
+    """
+    create all the threads, queues to process
+    the global instance_collection list for more domains,
+    and make it happen.
+    """
+    
     # Create new threads
     global exitFlag
     global queueLock
