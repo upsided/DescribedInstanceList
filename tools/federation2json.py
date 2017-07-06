@@ -192,6 +192,9 @@ def deleteShittyDomains(data):
           continue    
 
       if domainCheck.match(item['domain']):
+        if 'blacklisted' in item and item['blacklisted']:
+          eprint("Skipping blacklisted domain %s" % item['domain'])
+          continue
         result.append(item)
       else:
         eprint("removing shitty domain ", item['domain'])
