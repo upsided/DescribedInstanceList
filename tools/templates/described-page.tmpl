@@ -67,17 +67,26 @@ $page.scripts
 #for tootSample in $i['tootSample']
                 <div class="avvi-wall-avvi">
                     <a href="$tootSample.url">
-                        <img data-original="$tootSample.avvi" title="$tootSample.content_text" width="30" height="30" class='avvi-image lazy' width=30 height=30>
+                        <img data-original="$tootSample.account.avatar" title="$tootSample.content_text" width="30" height="30" class='avvi-image lazy' width=30 height=30>
                     </a>
                 </div>
 #end for ## avvi-wall
             </div> 
 #end if
             <h4 class="instance-head"><a href="https://$i.domain" target="_blank">$i.domain<a></h4>
+#if $i.type == 'gnusocial'
+            <p class="instance-clicks"> <a href="https://$i.domain/main/public" target="_blank">visit</a></p>
+#else
             <p class="instance-clicks"> <a href="$i.url" target="_blank">about</a></p>
             <p class="instance-clicks"><a href="http://www.unmung.com/mastoview?url=$i.domain&view=local" target="_blank">preview</a></p>
-#if 'openRegistrations' in $i and $i.openRegistrations
+#end if
+#if $i.open_registrations
+
+#if $i.type == 'gnusocial'
+            <p class="instance-clicks"><a href="https://$i.domain/" target="_blank">join</a></p>
+#else
             <p class="instance-clicks"><a href="https://$i.domain/about" target="_blank">join</a></p>
+#end if
 #end if
         </div>
         
@@ -95,7 +104,7 @@ $page.scripts
                 </div>
             
                 <div class="description-long">
-#if len($i['description']) > 500:
+#if $i.description and len($i['description']) > 500:
                     <details><summary>More Info...</summary>
                         $i.description
                     </details>
@@ -106,7 +115,7 @@ $page.scripts
 
                 <div class="contact-details">
                     <p>Email: 
-#if len($i.email) == 0
+#if not $i.email or len($i.email) == 0
                     Not Available
 #else
                     <a href="mailto:$i.email">$i.email</a>
@@ -115,7 +124,7 @@ $page.scripts
             
                     <p>
                     Admin: 
-#if len($i.admin) == 0
+#if not $i.admin or len($i.admin) == 0
                     Not Available
 #else
                     <a href="https://$i.domain/$i.admin">$i.admin@$i.domain</a>
