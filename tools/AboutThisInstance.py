@@ -5,6 +5,8 @@ import requests                 # pip3 install requests
 
 import sys, re, time
 from json import JSONDecodeError
+import time, datetime, dateutil # seriously, 3 modules for this?
+import dateutil.parser # sigh
 
 REQUEST_TIMEOUT=8.0
 PARSER = 'html.parser' # most consistent & flexible parser IMO
@@ -301,6 +303,7 @@ def badException(e):
 def theBetterGet(url):
   "get urls being wise to errors"
   r = None
+  print("URL: ", url)
   try:
     r = requests.get(url, timeout=REQUEST_TIMEOUT)
     if r.status_code == 200:
@@ -353,7 +356,7 @@ def AddMore(i: dict):
             i['language_name'] = languageMap[i['language']]['english']
             i['language_name_native'] = languageMap[i['language']]['native']
         
-    #replace required but missing with "?"
+    #replace required but missing with None
     for n in neededList:
         if n not in i:
             i[n] = None
@@ -381,6 +384,7 @@ def purify(sometext: str, absoluteURL=None) -> str:
 
     s = BeautifulSoup(s, PARSER)
     if len(s.findAll()) == 0:
+        eprint("treating %s as text..." % absoluteURL)
         s =  purifyText(s.get_text())
         return Newline2Para.sub(r'<p>\1</p>', s)
     
@@ -394,6 +398,7 @@ def purify(sometext: str, absoluteURL=None) -> str:
     while s.style != None: s.style.decompose()
 
     while s.embed != None: s.embed.decompose()
+    while s.iframe != None: s.iframe.decompose()
     
     if absoluteURL!= None:
         for link in s.find_all('a', href=True):
@@ -415,7 +420,7 @@ def purify(sometext: str, absoluteURL=None) -> str:
     s = s.prettify()
 
     # remove repetitive </br> cuz damn
-    #s = re.sub(r'(\s*</?br/?>\n?)+', '<br>', s)
+    s = re.sub(r'(\s*</?br/?>\n?)+', '<br>', s)
     return s    
 
 def toText(someText: str) -> str:
@@ -423,27 +428,57 @@ def toText(someText: str) -> str:
     s = s.get_text()
     return purifyText(s)            
 
+import socket
+def domainOK(domain: str) -> bool:
+  if re.match('[a-z]', domain) == None: return False;
+  if '.' not in domain: return False;
+
+  try:
+    addr = socket.gethostbyname(domain)
+  except:
+    return False
+  
+  for nono in ['192', '127', '0', '10', '100', '172.16', '169.254', '224', '240', '255']:
+    if addr.find(nono) == 0: return False
+
+  return True  
   
 def AboutThisInstance(domain: str, tootSample=True, updateDict=None) -> dict:
   d = {} # store all info in this dict
   if updateDict != None:
     d = updateDict  
   
-  d['domain'] = domain
+  # sad I have to do this
+  if not domainOK(domain):
+    d['reachable'] = False
+    d['domain'] = domain
+    d['last_chcek'] = time.time()
+    d['error'] = 'bad domain'
+    d['type'] = 'none'
+    return d, d['error']
+  
+  d['domain'] = domain.lower()
   aboutURL = "https://" + d['domain'] + "/about"
   aboutMoreURL = "https://" + d['domain'] + "/about/more"
   jsonURL = "https://%s/api/v1/instance.json" % d['domain']
-  tootURL = "https://%s/api/v1/timelines/public?local=1" % d['domain']
+  gnusocialCheck = "https://%s/main/public" % d['domain']
 
-  d['url'] = aboutMoreURL
   d['reachable'] = False
   d['last_check'] = time.time()
 
   r, d['error'] = theBetterGet(aboutURL)
-  if d['error'] != None: return d, d['error']
+  #print('1', d['error'])
+  if d['error'] != None: 
+    #check for gnusocial
+    r2, err = theBetterGet(gnusocialCheck)
+    if err == None:
+      d['type'] = 'gnusocial'
+      d['reachable'] = True
+    return d, d['error']
 
   html = r.text
 
+  #print('2', d['error'])
   # accepting registrations?
   if html.find('closed-registrations-message') >=0:
     d['open_registrations'] = False
@@ -452,10 +487,21 @@ def AboutThisInstance(domain: str, tootSample=True, updateDict=None) -> dict:
   
   # about/more info
   r, d['error'] = theBetterGet(aboutMoreURL)
-  if d['error'] != None: return d, d['error']
+  if d['error'] != None: 
+    #check for gnusocial
+    r2, err = theBetterGet(gnusocialCheck)
+    print('check', err)
+
+    if err == None:
+      d['type'] = 'gnusocial'
+      d['reachable'] = True
+    return d, d['error']
+     
+  #print('3', d['error'])
   
   # I put this here because every instance needs an about/more IMO
   # to be an instance
+  d['type'] = 'mastodon'
   d['reachable'] = True
 
   aboutDict = ExtractAboutInfo(r.text)
@@ -478,28 +524,80 @@ def AboutThisInstance(domain: str, tootSample=True, updateDict=None) -> dict:
  
   if tootSample:
     # now we get a sample of the local toots at this moment.
-    eprint("Getting toot sample from %s..." % tootURL)
-
-    r, d['error'] = theBetterGet(tootURL)
-    if d['error'] != None: return d, d['error']
-  
-    try:
-      theDict = r.json()
-      d['tootSample'] = theDict
-
-      for toot in d['tootSample']:
-        toot['avvi'] = toot['account']['avatar']
-        toot['content_text'] = toText(toot['content'])
-        toot['content_html'] = purify(toot['content'])
-
-    except JSONDecodeError: 
-      pass
+    ts, error = GetTootSample(d['domain'])
+    if error != None:
+      d['error'] = error
     
-  
+    if ts != None:
+      d['tootSample'] = ts
+    else:
+      d['tootSample'] = []
+
+  d['birthday'] = GetBirthday(d['domain'])
+    
   # this last bit cleans up and adds 
   # derivative information
   AddMore(d)
   return d, None
+
+def GetBirthday(domain: str) -> int:
+  bday = None
+  firstToot, error = GetFirstToot(domain, local=False)
+  if firstToot != None:
+    #print (firstToot)
+    # get first toot time and convert to unix timestamp
+    birthday = dateutil.parser.parse(firstToot['created_at'])
+    timesince = birthday - datetime.datetime.fromtimestamp(0).replace(tzinfo=dateutil.tz.tzutc())
+    timesince = int(timesince.total_seconds() * 1000)
+    bday = timesince
+  return bday
+  
+def GetTootSample(domain: str):
+  """
+  given a domain name, return a sample of 20 local toots
+  and an error string (if something goes weird)
+  e.g
+  toot_sample, errorstring = GetTootSample("mastodon.social")
+  """
+
+  tootURL = "https://%s/api/v1/timelines/public?local=1" % domain
+ 
+  # now we get a sample of the local toots at this moment.
+  eprint("Getting toot sample from %s..." % tootURL)
+
+  result, error = theBetterGet(tootURL)
+  if error != None: return None, error
+
+  try:
+    theDict = result.json()
+    return theDict, None
+  except JSONDecodeError:
+    return None, "Json Decode Error"
+    
+def GetFirstToot(domain: str, local=True):
+  """
+  given a domain name, return the oldest toot
+  """
+  tootURL = "https://%s/api/v1/timelines/public" % domain
+  if local:
+    tootURL = tootURL + "?local=1&max_id=20" 
+  else:
+    tootURL = tootURL + "?max_id=20" 
+
+  # now we get a sample of the local toots at this moment.
+  eprint("Getting toot sample from %s..." % tootURL)
+
+  result, error = theBetterGet(tootURL)
+  if error != None: return None, error
+
+  try:
+    theDict = result.json()
+    if len(theDict) > 0:
+      return theDict[-1], None
+    else:
+      return None, None
+  except JSONDecodeError:
+    return None, "Json Decode Error"
 
 def ExtractAboutInfo(html: str) -> dict:
     """
@@ -507,11 +605,9 @@ def ExtractAboutInfo(html: str) -> dict:
     info as feasible, returning a dict with keys like:
 
     'nameplate'     -- name plus short description
-    'title_onpage'    -- name of instance on about page
     'tagline'       -- the short description
     'admin'         -- admin contact in form @Gargron, if any
     'email'         -- email contact if any
-    'stuff'         -- extra junk that might not have parsed in contact area
     'language'      -- declared language in html doc (not reliable)
     """
 
@@ -525,19 +621,6 @@ def ExtractAboutInfo(html: str) -> dict:
     if theH != None and 'lang' in theH.attrs:
         d['language'] = theH.attrs['lang']
         #eprint("LANGUAGE: " + d['language'])
-        if d['language']  not in languageMap:
-            # attempt to get something useable:
-            l = d['language'].split("-")[0]
-            if l in languageMap:
-                print ("changing langage %s to %s " % ( d['language'], l))
-                d['language'] = l
-
-        if d['language'] in languageMap:
-            d['language_name'] = languageMap[d['language']]['english']
-            d['language_name_native'] = languageMap[d['language']]['native']
-        else:
-            d['language_name'] = d['language']
-            d['language_name_native'] = d['language']
 
     # contact info
     for div in s.find_all('div'):
@@ -612,7 +695,7 @@ def ExtractAboutInfo(html: str) -> dict:
     if 'nameplate' in d.keys():
         d['nameplate'] = d['nameplate'].get_text()
     if 'description' in d.keys():
-        d['description'] = d['description'].get_text()
+        d['description'] = d['description'].prettify()
 
     # used to keep extra laying about but now, meh, makes no difference
     if 'stuff' in d.keys():
