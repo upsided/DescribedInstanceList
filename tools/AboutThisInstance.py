@@ -1,4 +1,22 @@
 #!/usr/bin/env python3
+"""
+AboutThisInstance.py grabs information about a Mastodon instance
+and returns this information in a dict. It probes about/more, about/,
+instance.json, and grabs a public 20-toot sample on request
+
+Using from command line:
+python3 AboutThisInstance.py mastodon.social
+
+Using as a library
+import AboutThisInstance as about
+result, error = about.AboutThisInstance("mastodon.social", tootSample=False)
+
+In a network discovery context, errors are useful data, so exceptions are
+not thrown for 404's, etc. But the error text will be given as the second
+item in the return tuple.
+
+tootSample, when true, will grab about 20 toots from the instance's local public timeline.
+"""
 
 from bs4 import BeautifulSoup, CData, FeatureNotFound   # pip3 install bs4
 import requests                 # pip3 install requests
@@ -7,9 +25,13 @@ import sys, re, time
 from json import JSONDecodeError
 import time, datetime, dateutil # seriously, 3 modules for this?
 import dateutil.parser # sigh
+import urllib.robotparser
 
 REQUEST_TIMEOUT=8.0
 PARSER = 'html.parser' # most consistent & flexible parser IMO
+USERAGENT = "UpsideBot/0.9 (+https://github.com/upsided/DescribedInstanceList)"
+GETHEADER = {'user-agent': USERAGENT}
+PAGEGRAB_DELAY = 1 # seconds delay between page grabs
 
 languageMap = {'de': {'english': 'German', 'native': 'Deutsch'},
  'en': {'english': 'English', 'native': 'English'},
@@ -298,25 +320,37 @@ def eprint(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
     
 def badException(e):
+  """
+  is this an exception that should actually raise?
+  """
   return type(e) in [StopIteration, StopAsyncIteration, ArithmeticError, AssertionError, AttributeError, BufferError, EOFError, ImportError, ModuleNotFoundError, LookupError, MemoryError, NameError, OSError, ReferenceError, RuntimeError, SyntaxError, SystemError, TypeError, ValueError, Warning]
 
-def theBetterGet(url):
-  "get urls being wise to errors"
+def theBetterGet(url, delay=None):
+  "get urls being wise to errors. return a tuple of (result, errorstring)"
   r = None
   print("URL: ", url)
+  
+  if delay == None:
+    delay = PAGEGRAB_DELAY
+  
+  time.sleep(delay)
+  
   try:
-    r = requests.get(url, timeout=REQUEST_TIMEOUT)
+    r = requests.get(url, timeout=REQUEST_TIMEOUT, headers=GETHEADER)
     if r.status_code == 200:
       return r, None
     else:
       return r, str(r.status_code) + " " + str(r.reason)
-  except Exception as e: #FIXME!!!
+  except Exception as e: #FIXME!!! (actually kinda fixed below)
     eprint("couldn't download '%s':\n%s" %(url, str(e)))
     if badException(e):
       raise e
     return r, str(e)
 
 def default(dictionary: dict, key, default) -> dict:
+    """
+    in dictionary, set key to default if it doesn't exist
+    """
     if key not in dictionary:
         dictionary[key] = default
     return dict
@@ -324,6 +358,11 @@ def default(dictionary: dict, key, default) -> dict:
 # add even more info to complete the data
 
 def AddMore(i: dict):
+    """
+    add derivative info to the record of the instance,
+    including default values and purified text.
+    This doesn't access the network.
+    """
     purifyList = ['description', 'tagline', 'title']
     neededList = ['users', 'connections', 'statuses', 'language', 'language_name' ]
 
@@ -376,6 +415,17 @@ def purifyText(sometext: str) -> str:
 
 Newline2Para=re.compile(r'\n([^\n]+)\n')
 def purify(sometext: str, absoluteURL=None) -> str:
+    """
+    in general, remove html and text nasties, like <script>s
+    <embed>s, style declarations, and so on
+    and return the purified text.
+    
+    Furthermore, if given an absoluteURL, change <a href> links and <img src> from their
+    local versions to absolute using the absoluteURL as a root path.
+    
+    This should return text that is clean enough to embed on another page
+    without too much mess.
+    """
 
     if type(sometext) != str: return ""
     
@@ -429,17 +479,29 @@ def toText(someText: str) -> str:
     return purifyText(s)            
 
 import socket
+domainCheck = re.compile(r'^[a-z0-9]+\.?([a-z0-9-]+\.?)*\.[a-z0-9]+$')
 def domainOK(domain: str) -> bool:
+  "is this domain valid? ... ish"
+  if domainCheck.match(domain) == None:
+    eprint("Didn't pass domain check")
+    return False
+
+  # require a letter, this denies numerical IPs
   if re.match('[a-z]', domain) == None: return False;
   if '.' not in domain: return False;
 
+  # now perform lookup
   try:
     addr = socket.gethostbyname(domain)
   except:
+    eprint("Couldn't lookup host")
     return False
   
-  for nono in ['192', '127', '0', '10', '100', '172.16', '169.254', '224', '240', '255']:
-    if addr.find(nono) == 0: return False
+  # banish those ips that are special
+  for nono in ['192.', '127.', '0.', '10.', '100.', '172.16.', '169.254.', '224.', '240.', '255.']:
+    if addr.find(nono) == 0: 
+      eprint("Bad IP")
+      return False
 
   return True  
   
@@ -452,89 +514,127 @@ def AboutThisInstance(domain: str, tootSample=True, updateDict=None) -> dict:
   if not domainOK(domain):
     d['reachable'] = False
     d['domain'] = domain
-    d['last_chcek'] = time.time()
+    d['last_check'] = time.time()*1000
     d['error'] = 'bad domain'
     d['type'] = 'none'
+    d['blacklisted'] = True
+    d['blacklist_reason'] = 'bad domain name'
+    eprint("AboutThisInstance Error, Bad Domain: ", domain)
     return d, d['error']
+    
   
   d['domain'] = domain.lower()
+  robotsURL = "https://" + d['domain'] + "/robots.txt"
   aboutURL = "https://" + d['domain'] + "/about"
   aboutMoreURL = "https://" + d['domain'] + "/about/more"
   jsonURL = "https://%s/api/v1/instance.json" % d['domain']
   gnusocialCheck = "https://%s/main/public" % d['domain']
-
+  apiURL = "https://%s/api/v1" % d['domain']
+  
   d['reachable'] = False
-  d['last_check'] = time.time()
+  d['last_check'] = time.time()*1000
 
-  r, d['error'] = theBetterGet(aboutURL)
-  #print('1', d['error'])
-  if d['error'] != None: 
-    #check for gnusocial
-    r2, err = theBetterGet(gnusocialCheck)
-    if err == None:
-      d['type'] = 'gnusocial'
-      d['reachable'] = True
-    return d, d['error']
+  robotchecker = urllib.robotparser.RobotFileParser()
 
-  html = r.text
+  r, d['error'] = theBetterGet(robotsURL, delay=0)
+  if d['error'] == None:
+    # to reduce DB use, remove comments
+    text=""
+    
+    for line in r.text.splitlines():
+      strip = line.lstrip()
+      if len(strip) > 0 and strip[0] != "#":
+        text = text + line + "\n"
 
-  #print('2', d['error'])
-  # accepting registrations?
-  if html.find('closed-registrations-message') >=0:
-    d['open_registrations'] = False
+    d['robots_txt'] = text
+    d['reachable'] = True
+    robotchecker.parse(text.splitlines())
+
+  if robotchecker.can_fetch(USERAGENT, aboutURL):
+    r, d['error'] = theBetterGet(aboutURL)
+    #print('1', d['error'])
+    if d['error'] != None: 
+      #check for gnusocial
+      r2, err = theBetterGet(gnusocialCheck)
+      if err == None:
+        d['type'] = 'gnusocial'
+        d['reachable'] = True
+      return d, d['error']
+
+    html = r.text
+
+    #print('2', d['error'])
+    # accepting registrations?
+    if html.find('closed-registrations-message') >=0:
+      d['open_registrations'] = False
+    else:
+      d['open_registrations'] = True
   else:
-    d['open_registrations'] = True
-  
+    eprint("robots.txt disallows access to ", aboutURL)
+
+
   # about/more info
-  r, d['error'] = theBetterGet(aboutMoreURL)
-  if d['error'] != None: 
-    #check for gnusocial
-    r2, err = theBetterGet(gnusocialCheck)
-    print('check', err)
+  if robotchecker.can_fetch(USERAGENT, aboutMoreURL):
+    r, d['error'] = theBetterGet(aboutMoreURL)
+    if d['error'] != None: 
+      #check for gnusocial
+      r2, err = theBetterGet(gnusocialCheck)
+      print('check', err)
 
-    if err == None:
-      d['type'] = 'gnusocial'
-      d['reachable'] = True
-    return d, d['error']
+      if err == None:
+        d['type'] = 'gnusocial'
+        d['reachable'] = True
+      return d, d['error']
      
-  #print('3', d['error'])
   
-  # I put this here because every instance needs an about/more IMO
-  # to be an instance
-  d['type'] = 'mastodon'
-  d['reachable'] = True
+    # I put this here because every instance needs an about/more IMO
+    # to be an instance
+    d['type'] = 'mastodon'
+    d['reachable'] = True
 
-  aboutDict = ExtractAboutInfo(r.text)
-  for key in aboutDict.keys():
-      d[key] = aboutDict[key] 
-
+    aboutDict = ExtractAboutInfo(r.text)
+    for key in aboutDict.keys():
+        d[key] = aboutDict[key] 
+  else:
+    eprint("robots.txt disallows access to ", aboutMoreURL)
 
   # extra info at the instance's json file
-  r, d['error'] = theBetterGet(jsonURL)
-  if d['error'] != None: return d, d['error']
+  if robotchecker.can_fetch(USERAGENT, jsonURL):
+    r, d['error'] = theBetterGet(jsonURL)
+    if d['error'] != None: return d, d['error']
 
-  skipit = False
-  try:
-    j = r.json()
-    for k,v in j.items():
-      if k not in d:
-        d[k] = v
-  except JSONDecodeError: # dear modules naming custom exception classes I have to hunt down: fuckya
-    pass
- 
+    skipit = False
+    try:
+      j = r.json()
+      for k,v in j.items():
+        # Information gleaned from about/more scrape is more reliable
+        # than instances.json, so prefer that instead.
+        if k not in d:
+          d[k] = v
+    except JSONDecodeError: # dear modules naming custom exception classes I have to hunt down: fuckya
+      pass
+  else:
+    eprint("robots.txt disallows access to ", jsonURL)
+
   if tootSample:
     # now we get a sample of the local toots at this moment.
-    ts, error = GetTootSample(d['domain'])
-    if error != None:
-      d['error'] = error
+    if robotchecker.can_fetch(USERAGENT, apiURL):
+      ts, error = GetTootSample(d['domain'])
+      if error != None:
+        d['error'] = error
     
-    if ts != None:
-      d['tootSample'] = ts
+      if ts != None:
+        d['tootSample'] = ts
+      else:
+        d['tootSample'] = []
     else:
-      d['tootSample'] = []
+      eprint("robots.txt disallows access to ", apiURL)
 
-  d['birthday'] = GetBirthday(d['domain'])
-    
+  if robotchecker.can_fetch(USERAGENT, apiURL):
+    d['birthday'] = GetBirthday(d['domain'])
+  else:
+    eprint("robots.txt disallows access to ", apiURL)
+
   # this last bit cleans up and adds 
   # derivative information
   AddMore(d)
