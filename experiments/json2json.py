@@ -28,7 +28,7 @@ if __name__ == "__main__":
     
     munged = []
     
-    copyfields = ['domain', 'name', 'title', 'statuses', 'users', 'connections', 'openRegistrations']
+    copyfields = ['domain', 'title', 'statuses', 'users', 'connections', 'open_registrations', 'blacklisted']
     for instance in data:
         #eprint(instance['domain'])
         d = {}
