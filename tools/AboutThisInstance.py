@@ -9,13 +9,17 @@ python3 AboutThisInstance.py mastodon.social
 
 Using as a library
 import AboutThisInstance as about
-result, error = about.AboutThisInstance("mastodon.social", tootSample=False)
+result, error = about.AboutThisInstance("mastodon.social", tootSample=False, updateDict=None)
 
 In a network discovery context, errors are useful data, so exceptions are
 not thrown for 404's, etc. But the error text will be given as the second
 item in the return tuple.
 
 tootSample, when true, will grab about 20 toots from the instance's local public timeline.
+
+if "updateDict" is specified, AboutThisInstance will update the content within the dict
+and return the full dict. This allows additive fields, and will skip fetching immutable
+stuff (like 'birthday')
 """
 
 from bs4 import BeautifulSoup, CData, FeatureNotFound   # pip3 install bs4
@@ -29,9 +33,10 @@ import urllib.robotparser
 
 REQUEST_TIMEOUT=8.0
 PARSER = 'html.parser' # most consistent & flexible parser IMO
-USERAGENT = "UpsideBot/0.9 (+https://github.com/upsided/DescribedInstanceList)"
+USERAGENT = "UpsideBot/0.9 (+https://github.com/upsided/DescribedInstanceList/blob/master/tools/AboutThisInstance.py)"
 GETHEADER = {'user-agent': USERAGENT}
 PAGEGRAB_DELAY = 1 # seconds delay between page grabs
+BE_MEAN = False # in case something goes wonky
 
 languageMap = {'de': {'english': 'German', 'native': 'Deutsch'},
  'en': {'english': 'English', 'native': 'English'},
@@ -483,7 +488,7 @@ domainCheck = re.compile(r'^[a-z0-9]+\.?([a-z0-9-]+\.?)*\.[a-z0-9]+$')
 def domainOK(domain: str) -> bool:
   "is this domain valid? ... ish"
   if domainCheck.match(domain) == None:
-    eprint("Didn't pass domain check")
+    eprint("Didn't pass domain check:", domain)
     return False
 
   # require a letter, this denies numerical IPs
@@ -494,7 +499,7 @@ def domainOK(domain: str) -> bool:
   try:
     addr = socket.gethostbyname(domain)
   except:
-    eprint("Couldn't lookup host")
+    eprint("Couldn't lookup host:", domain)
     return False
   
   # banish those ips that are special
@@ -529,12 +534,12 @@ def AboutThisInstance(domain: str, tootSample=True, updateDict=None) -> dict:
   aboutMoreURL = "https://" + d['domain'] + "/about/more"
   jsonURL = "https://%s/api/v1/instance.json" % d['domain']
   gnusocialCheck = "https://%s/main/public" % d['domain']
-  apiURL = "https://%s/api/v1" % d['domain']
+  apiURL = "https://%s/api/v1/timelines/" % d['domain']
   
   d['reachable'] = False
   d['last_check'] = time.time()*1000
 
-  robotchecker = urllib.robotparser.RobotFileParser()
+  robotchecker = urllib.robotparser.RobotFileParser("https://%s/robots.txt" % d['domain'])
 
   r, d['error'] = theBetterGet(robotsURL, delay=0)
   if d['error'] == None:
@@ -550,7 +555,7 @@ def AboutThisInstance(domain: str, tootSample=True, updateDict=None) -> dict:
     d['reachable'] = True
     robotchecker.parse(text.splitlines())
 
-  if robotchecker.can_fetch(USERAGENT, aboutURL):
+  if BE_MEAN or robotchecker.can_fetch(USERAGENT, aboutURL):
     r, d['error'] = theBetterGet(aboutURL)
     #print('1', d['error'])
     if d['error'] != None: 
@@ -574,7 +579,7 @@ def AboutThisInstance(domain: str, tootSample=True, updateDict=None) -> dict:
 
 
   # about/more info
-  if robotchecker.can_fetch(USERAGENT, aboutMoreURL):
+  if BE_MEAN or robotchecker.can_fetch(USERAGENT, aboutMoreURL):
     r, d['error'] = theBetterGet(aboutMoreURL)
     if d['error'] != None: 
       #check for gnusocial
@@ -599,7 +604,7 @@ def AboutThisInstance(domain: str, tootSample=True, updateDict=None) -> dict:
     eprint("robots.txt disallows access to ", aboutMoreURL)
 
   # extra info at the instance's json file
-  if robotchecker.can_fetch(USERAGENT, jsonURL):
+  if BE_MEAN or robotchecker.can_fetch(USERAGENT, jsonURL):
     r, d['error'] = theBetterGet(jsonURL)
     if d['error'] != None: return d, d['error']
 
@@ -618,7 +623,7 @@ def AboutThisInstance(domain: str, tootSample=True, updateDict=None) -> dict:
 
   if tootSample:
     # now we get a sample of the local toots at this moment.
-    if robotchecker.can_fetch(USERAGENT, apiURL):
+    if BE_MEAN or robotchecker.can_fetch(USERAGENT, apiURL):
       ts, error = GetTootSample(d['domain'])
       if error != None:
         d['error'] = error
@@ -630,10 +635,11 @@ def AboutThisInstance(domain: str, tootSample=True, updateDict=None) -> dict:
     else:
       eprint("robots.txt disallows access to ", apiURL)
 
-  if robotchecker.can_fetch(USERAGENT, apiURL):
-    d['birthday'] = GetBirthday(d['domain'])
-  else:
-    eprint("robots.txt disallows access to ", apiURL)
+  if 'birthday' not in d:
+    if BE_MEAN or robotchecker.can_fetch(USERAGENT, apiURL):
+      d['birthday'] = GetBirthday(d['domain'])
+    else:
+      eprint("robots.txt disallows access to ", apiURL)
 
   # this last bit cleans up and adds 
   # derivative information
