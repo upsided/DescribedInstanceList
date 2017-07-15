@@ -36,7 +36,7 @@ PARSER = 'html.parser' # most consistent & flexible parser IMO
 USERAGENT = "UpsideBot/0.9 (+https://github.com/upsided/DescribedInstanceList/blob/master/tools/AboutThisInstance.py)"
 GETHEADER = {'user-agent': USERAGENT}
 PAGEGRAB_DELAY = 1 # seconds delay between page grabs
-BE_MEAN = False # in case something goes wonky
+BE_MEAN = False # in case something goes wonky, DL unrestricted info. Should be False normally
 
 languageMap = {'de': {'english': 'German', 'native': 'Deutsch'},
  'en': {'english': 'English', 'native': 'English'},
@@ -388,7 +388,7 @@ def AddMore(i: dict):
     default(i, 'error', None)
 
 
-    if 'language' in i:
+    if 'language' in i and i['language'] != None:
         if i['language']  not in languageMap:
             # attempt to get something useable:
             l = i['language'].split("-")[0]
@@ -554,6 +554,8 @@ def AboutThisInstance(domain: str, tootSample=True, updateDict=None) -> dict:
     d['robots_txt'] = text
     d['reachable'] = True
     robotchecker.parse(text.splitlines())
+  else: # possibly not found, assume full access
+    robotchecker.parse("User-Agent: *\nAllow: /".splitlines())
 
   if BE_MEAN or robotchecker.can_fetch(USERAGENT, aboutURL):
     r, d['error'] = theBetterGet(aboutURL)

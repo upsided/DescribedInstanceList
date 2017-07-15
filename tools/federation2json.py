@@ -105,7 +105,7 @@ def process_data(threadName, q):
             i = q.get()
             #eprint ("%s processing %s" % (threadName, i['name']))
             queueLock.release()
-            d, error = about.AboutThisInstance(i['domain'], updateDict=i)
+            d, error = about.AboutThisInstance(i['domain'], updateDict=i, tootSample=False)
             #eprint ("%s done processing %s" % (threadName, d['domain']))
 
             queueLock.acquire()

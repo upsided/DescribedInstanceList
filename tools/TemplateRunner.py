@@ -387,7 +387,7 @@ if __name__ == "__main__":
     instances, languages, filtergroups = makeTags(instances)
     instances = sortByHash(instances)
     
-    for FunVersion in [True, False]:
+    for FunVersion in [False]: #used to have toot previews, now I don't do it
 
         theDate = datetime.datetime.utcnow().strftime("%A %d %b %I:%M:%S %p GMT")
 
